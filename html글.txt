@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lange="en">
+<head>
+   <meta charset=utf-8 />
+   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+   <style type="text/css">
+   body {
+       margin: 10px;
+       font-family: sans-serif;
+       font-size: 30px;
+       color: #00AEFF;
+       width: 300px;
+   }
+   h2 {
+       font-size: 40px;
+       padding-bottom: 10px;
+   }
+   label {
+       font-size: 14px;
+       padding-top: 20px;
+       color: #666;
+   }
+   .Btns {
+       padding: 5px;
+       font-size: 14px;
+       width: 90px;
+       color: #00AEFF;
+   }
+   .container {
+       background-color: #f7f7f7;
+       padding: 50px;
+       border: 1px dotted #CCC;
+       width: 100px;
+       margin: 20px 0 40px 0;
+       padding-top: 10px;
+   }
+   .btnContainer {
+       margin-top: 10px;
+   }
+   #angle {
+       width: 50px;
+   }
+
+   </style>
+</head>
+
+<body>
+   <h2><font face="맑은 고딕" color=#0B0B61><p style="font-size:30pt;" align=center>Teachable Machine Audio Model</font></h2>
+   <center><button type="button" onclick="init()" style="border-radius:5px; width:140px; height:70px; background-color:white;">Start
+   <p style="font-size:10pt;" align="center"></p></button></center>
+   <div id="label-container"></div>
+
+
+</body>
+
+   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.4.0/dist/speech-commands.min.js"></script>
+   <!-- The following (socket.io.js) is only required when using the node_server -->
+<script src="../../socket.io/socket.io.js"></script>
+<script src="../../dist/Breakout.min.js"></script>
+<script src="../libs/jquery.min.js"></script>
+<script type="text/javascript">
+   //Teachable machine code
+   var maxSoundValue;
+   // more documentation available at
+   // https://github.com/tensorflow/tfjs-models/tree/master/speech-commands
+
+   // the link to your model provided by Teachable Machine export panel
+   const URL = "https://teachablemachine.withgoogle.com/models/S7Lp8U-en/";
+
+   async function createModel() {
+         const checkpointURL = URL + "model.json"; // model topology
+         const metadataURL = URL + "metadata.json"; // model metadata
+
+         const recognizer = speechCommands.create(
+               "BROWSER_FFT", // fourier transform type, not useful to change
+               undefined, // speech commands vocabulary feature, not useful for your models
+               checkpointURL,
+               metadataURL);
+
+         // check that model and metadata are loaded via HTTPS requests.
+         await recognizer.ensureModelLoaded();
+
+         return recognizer;
+   }
+
+   //breakout code
+   //$(document).ready(function() {
+
+         // Declare these variables so you don't have
+         // to type the full namespace
+         var IOBoard = BO.IOBoard;
+         var IOBoardEvent = BO.IOBoardEvent;
+         var Servo = BO.io.Servo;
+         var PotEvent = BO.io.PotEvent;
+
+         // Set to true to print debug messages to console
+         BO.enableDebugging = true;
+
+         // If you are not serving this file from the same computer
+         // that the Arduino board is connected to, replace
+         // window.location.hostname with the IP address or hostname
+         // of the computer that the Arduino board is connected to.
+         var host = window.location.hostname;
+         // if the file is opened locally, set the host to "localhost"
+         if (window.location.protocol.indexOf("file:") === 0) {
+               host = "localhost";
+         }
+         var arduino = new IOBoard(host, 8887);
+
+         // Variables
+         var servo1;
+         var servo2;
+         var servo3;
+         var servo4;
+         var servo5;
+         //var pot;
+
+         // Listen for the IOBoard READY event which indicates the IOBoard
+         // is ready to send and receive data
+         arduino.addEventListener(IOBoardEvent.READY, onReady);
+
+         function onReady(event) {
+
+               // Remove the listener because it is no longer needed
+               //arduino.removeEventListener(IOBoardEvent.READY, onReady);
+
+               // Analog input example using Potentiometer object
+               //Parameters: board, analogPin, enableSmoothing
+               //pot = new Potentiometer(arduino, arduino.getAnalogPin(0), true);
+
+               // Listen for events
+               //pot.addEventListener(PotEvent.CHANGE, onPotChange);
+
+               // Parameters: board, pin
+               servo1 = new Servo(arduino, arduino.getDigitalPin(8));
+               servo2 = new Servo(arduino, arduino.getDigitalPin(9));
+               servo3 = new Servo(arduino, arduino.getDigitalPin(10));
+               servo4 = new Servo(arduino, arduino.getDigitalPin(11));
+               servo5 = new Servo(arduino, arduino.getDigitalPin(12));
+               // NOTE: Running a servo can interfere with analog
+               // inputs, creating jitter in the signal
+
+               // Set initial angle to 90 degrees
+               servo1.angle = 90;
+               servo2.angle = 90;
+               servo3.angle = 90;
+               servo4.angle = 90;
+               servo5.angle = 90;
+
+               initGUIListeners();
+
+         }
+
+         function onPotChange(event) {
+               // Multiply by 180.0 to scale to the range of 0 to 180
+               // target is a reference to the potentiometer that fired
+               // the CHANGE event
+               var angle = event.target.value * 180.0;
+         }
+
+         function initGUIListeners() {
+               $('button').on('click', function() {
+                     servo.angle = $(this).data('angle');
+               });
+
+               $('#angle').change(function(evt) {
+                     var val = this.value;
+                     if (val <= 180 && val >= 0) {
+                           // Rotate the servo head to the specified angle
+                           servo.angle = val;
+                     }
+               });
+         }
+
+
+      //Teachable machine code
+   async function init() {
+
+
+
+         const recognizer = await createModel();
+         const classLabels = recognizer.wordLabels(); // get class labels
+         const labelContainer = document.getElementById("label-container");
+         for (let i = 0; i < classLabels.length + 2; i++) {
+               labelContainer.appendChild(document.createElement("div"));
+         }
+
+         // listen() takes two arguments:
+         // 1. A callback function that is invoked anytime a word is recognized.
+         // 2. A configuration object with adjustable fields
+         recognizer.listen(result => {
+               const scores = result.scores; // probability of prediction for each class
+               // render the probability scores per class
+               var maxIndex = 0, maxLabel;
+
+
+            if(result.scores[0].toFixed(2) > 0.70){
+            labelContainer.childNodes[1].innerHTML="도 입니다.";
+            const classPrediction = classLabels[0] + ":" + result.scores[0].toFixed(2);
+            labelContainer.childNodes[0].innerHTML = classPrediction
+            servo1.angle=90;}
+
+            else if(result.scores[1].toFixed(2) > 0.70){
+            labelContainer.childNodes[1].innerHTML="파 입니다.";
+            const classPrediction = classLabels[1] + ":" + result.scores[1].toFixed(2);
+            labelContainer.childNodes[0].innerHTML = classPrediction
+            servo2.angle=90;}
+
+            else if(result.scores[2].toFixed(2) > 0.70){
+            labelContainer.childNodes[0].innerHTML="라 입니다.";}
+
+            else if(result.scores[3].toFixed(2) > 0.70){
+            labelContainer.childNodes[1].innerHTML="미 입니다.";
+            const classPrediction = classLabels[3] + ":" + result.scores[3].toFixed(2);
+            labelContainer.childNodes[0].innerHTML = classPrediction;
+            servo3.angle=90;
+            }
+
+            else if(result.scores[4].toFixed(2) > 0.70){
+            labelContainer.childNodes[1].innerHTML="레 입니다.";
+            const classPrediction = classLabels[4] + ":" + result.scores[4].toFixed(2);
+            labelContainer.childNodes[0].innerHTML = classPrediction;
+            servo4.angle=90;}
+
+            else if(result.scores[5].toFixed(2) > 0.70){
+            labelContainer.childNodes[1].innerHTML="솔 입니다.";
+            const classPrediction = classLabels[5] + ":" + result.scores[5].toFixed(2);
+            labelContainer.childNodes[0].innerHTML = classPrediction
+            servo5.angle=90;}
+
+            else if(result.scores[6].toFixed(2) > 0.70){
+            labelContainer.childNodes[0].innerHTML="시 입니다."}
+
+            else if(result.scores[7].toFixed(2) > 0.70){
+            labelContainer.childNodes[1].innerHTML="배경음 입니다.";
+            const classPrediction = classLabels[7] + ":" + result.scores[7].toFixed(2);
+            labelContainer.childNodes[0].innerHTML = classPrediction
+            servo1.angle=0;
+            servo2.angle=0;
+            servo3.angle=0;
+            servo4.angle=0;
+            servo5.angle=0;
+
+            }
+
+            else{labelContainer.childNodes[0].innerHTML="dont know."}
+
+        }, {
+               includeSpectrogram: true, // in case listen should return result.spectrogram
+               probabilityThreshold: 0.75,
+               invokeCallbackOnNoiseAndUnknown: true,
+               overlapFactor: 0.50 // probably want between 0.5 and 0.75. More info in README
+         });
+         // Stop the recognition in 5 seconds.
+          //setTimeout(() => recognizer.stopListening(), 5000);
+      }
+   //});
+
+   </script>
+
+</html>

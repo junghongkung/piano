@@ -1,0 +1,73 @@
+# -*- coding: utf-8 -*-
+"""
+Spyder Editor
+
+This is a temporary script file.
+"""
+
+from flask import Flask, render_template, send_from_directory, request
+import os 
+import serial
+from flask_socketio import SocketIO
+import socketio
+
+
+
+arduino1 = serial.Serial('COM7',9600)
+sio = socketio.Client()
+
+app = Flask(__name__)
+socket_io = SocketIO(app)
+
+@app.route("/", methods=['GET', 'POST'])
+def home():
+    return render_template('main1.html',subject="Teachable Machine Audio Model")
+
+@socket_io.on('connect')
+def connected():
+    print("connected!\n\n")
+    socket_io.send('python')
+    
+
+    
+@socket_io.on('message')
+def handleMessage(msg, methods=['GET', 'POST']):
+    if request.method=='GET':
+        max_label_name, value = msg.split()
+        print("max label name : " + max_label_name + "\n")
+        if max_label_name=='_background_noise_':
+            arduino1.write(b'b')
+        elif max_label_name=='Do':
+            arduino1.write(b'd')
+        elif max_label_name=='Re':
+            arduino1.write(b'r')
+        elif max_label_name=='Mi':
+            arduino1.write(b'm')
+        elif max_label_name=='Fa':
+            arduino1.write(b'f')
+        else:
+            arduino1.write(b's')
+            
+
+                             
+        print("value : " + value + "\n")
+
+        fp=open(r"C:\\Users\82103\Desktop\test\webserver\flask_value\value.TXT","a")
+        fp.write(max_label_name)
+        fp.write(":")
+        fp.write(value)
+        fp.write("\n")
+        fp.close()
+
+
+        
+#favicon error를 해결하기 s위한 코드
+@app.route('/favicon.ico') 
+def favicon(): 
+    return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+    
+
+if __name__ == "__main__":
+    app.run()
+    socket_io.run(app)
+    app.run(debug=True, port=80, threaded = True )
